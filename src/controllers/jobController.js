@@ -3,7 +3,6 @@ const redis = require('../config/redis');
 
 const getAllJobs = async (req, res, next) => {
     try {
-        console.log('Fetching from database');
         const jobs = await Job.findAll({
             where: { is_active: true },
             order: [['createdAt', 'DESC']],
