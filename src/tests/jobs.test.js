@@ -6,10 +6,6 @@ let employerToken;
 let candidateToken;
 let createdJobId;
 
-process.on('unhandledRejection', (err) => {
-    console.error('Unhandled rejection:', err.message);
-});
-
 beforeAll(async () => {
     await sequelize.sync({ force: true });
 
@@ -22,6 +18,26 @@ beforeAll(async () => {
         .post('/api/v1/auth/register')
         .send({ email: 'candidate@example.com', password: '123456', role: 'candidate' });
     candidateToken = candidateRes.body.data.accessToken;
+
+    // Seed jobs for pagination/filter tests
+    await Promise.all([
+        request(app).post('/api/v1/jobs').set('Authorization', `Bearer ${employerToken}`).send({
+            title: 'Frontend Developer',
+            description: 'Looking for a React developer with 2+ years of experience.',
+            company: 'DesignCo',
+            location: 'Istanbul',
+            salary_min: 2000,
+            salary_max: 4000,
+        }),
+        request(app).post('/api/v1/jobs').set('Authorization', `Bearer ${employerToken}`).send({
+            title: 'DevOps Engineer',
+            description: 'Looking for a DevOps engineer with Kubernetes experience.',
+            company: 'CloudCo',
+            location: 'Remote',
+            salary_min: 5000,
+            salary_max: 8000,
+        }),
+    ]);
 });
 
 afterAll(async () => {
@@ -35,7 +51,7 @@ describe('Jobs Endpoints', () => {
             expect(res.statusCode).toBe(401);
         });
 
-        it('should return jobs list with valid token', async () => {
+        it('should return paginated jobs list', async () => {
             const res = await request(app)
                 .get('/api/v1/jobs')
                 .set('Authorization', `Bearer ${employerToken}`);
@@ -43,6 +59,46 @@ describe('Jobs Endpoints', () => {
             expect(res.statusCode).toBe(200);
             expect(res.body.success).toBe(true);
             expect(Array.isArray(res.body.data)).toBe(true);
+            expect(res.body.pagination).toBeDefined();
+            expect(res.body.pagination.total).toBeGreaterThanOrEqual(2);
+            expect(res.body.pagination.page).toBe(1);
+        });
+
+        it('should respect limit param', async () => {
+            const res = await request(app)
+                .get('/api/v1/jobs?limit=1')
+                .set('Authorization', `Bearer ${employerToken}`);
+
+            expect(res.statusCode).toBe(200);
+            expect(res.body.data.length).toBe(1);
+            expect(res.body.pagination.limit).toBe(1);
+        });
+
+        it('should filter by title', async () => {
+            const res = await request(app)
+                .get('/api/v1/jobs?title=frontend')
+                .set('Authorization', `Bearer ${employerToken}`);
+
+            expect(res.statusCode).toBe(200);
+            expect(res.body.data.every(j => j.title.toLowerCase().includes('frontend'))).toBe(true);
+        });
+
+        it('should filter by location', async () => {
+            const res = await request(app)
+                .get('/api/v1/jobs?location=remote')
+                .set('Authorization', `Bearer ${employerToken}`);
+
+            expect(res.statusCode).toBe(200);
+            expect(res.body.data.every(j => j.location.toLowerCase().includes('remote'))).toBe(true);
+        });
+
+        it('should filter by salary_min', async () => {
+            const res = await request(app)
+                .get('/api/v1/jobs?salary_min=5000')
+                .set('Authorization', `Bearer ${employerToken}`);
+
+            expect(res.statusCode).toBe(200);
+            expect(res.body.data.every(j => j.salary_min >= 5000)).toBe(true);
         });
     });
 

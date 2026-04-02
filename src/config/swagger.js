@@ -24,6 +24,16 @@ const options = {
                         id: { type: 'string', format: 'uuid' },
                         email: { type: 'string', format: 'email' },
                         role: { type: 'string', enum: ['employer', 'candidate'] },
+                        createdAt: { type: 'string', format: 'date-time' },
+                    },
+                },
+                Pagination: {
+                    type: 'object',
+                    properties: {
+                        total: { type: 'integer' },
+                        page: { type: 'integer' },
+                        limit: { type: 'integer' },
+                        totalPages: { type: 'integer' },
                     },
                 },
                 Job: {

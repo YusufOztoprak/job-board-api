@@ -1,33 +1,36 @@
 # Job Board API
 
-A RESTful API for a job board platform built with Node.js and Express. Supports user authentication with JWT, job listing management, Redis caching, and input validation.
+A RESTful API for a job board platform built with Node.js and Express. Supports JWT authentication, role-based access control, job listing management with pagination and filtering, and Redis caching.
 
 ## Features
 
 - JWT authentication with access & refresh tokens
-- Role-based users: `employer` and `candidate`
+- Role-based access: `employer` and `candidate`
 - Full CRUD for job listings (soft delete via `is_active` flag)
+- Pagination and filtering on job listings (title, company, location, salary range)
 - Redis caching on job listings (60-second TTL, auto-invalidated on write)
+- Role + ownership enforcement (only employers can post, only the owner can edit/delete)
+- User profile endpoint with password update
 - Request validation with Joi
 - Rate limiting: 100 req/15min globally, 10 req/15min on auth endpoints
-- Swagger UI API documentation
+- Swagger UI API documentation at `/api-docs`
 - Docker & docker-compose support
-- Integration tests with Jest + Supertest
+- Integration tests with Jest + Supertest (25 tests)
 
 ## Tech Stack
 
-| Layer        | Technology                     |
-|--------------|--------------------------------|
-| Runtime      | Node.js 18                     |
-| Framework    | Express 4                      |
-| Database     | PostgreSQL 16 + Sequelize ORM  |
-| Cache        | Redis + ioredis                |
-| Auth         | JSON Web Tokens (jsonwebtoken) |
-| Validation   | Joi                            |
-| Rate Limiting| express-rate-limit             |
-| Docs         | Swagger UI (swagger-jsdoc)     |
-| Testing      | Jest + Supertest               |
-| Container    | Docker + docker-compose        |
+| Layer         | Technology                     |
+|---------------|--------------------------------|
+| Runtime       | Node.js 18                     |
+| Framework     | Express 4                      |
+| Database      | PostgreSQL 16 + Sequelize ORM  |
+| Cache         | Redis + ioredis                |
+| Auth          | JSON Web Tokens (jsonwebtoken) |
+| Validation    | Joi                            |
+| Rate Limiting | express-rate-limit             |
+| Docs          | Swagger UI (swagger-jsdoc)     |
+| Testing       | Jest + Supertest               |
+| Container     | Docker + docker-compose        |
 
 ## Project Structure
 
@@ -35,12 +38,15 @@ A RESTful API for a job board platform built with Node.js and Express. Supports 
 src/
 ├── config/
 │   ├── database.js       # Sequelize connection
-│   └── redis.js          # ioredis client
+│   ├── redis.js          # ioredis client
+│   └── swagger.js        # Swagger spec
 ├── controllers/
-│   ├── authController.js # register & login
-│   └── jobController.js  # CRUD job operations
+│   ├── authController.js # register, login, refresh
+│   ├── jobController.js  # CRUD + pagination + filtering
+│   └── userController.js # profile, password update
 ├── middleware/
 │   ├── authenticate.js   # JWT verification
+│   ├── authorize.js      # role & ownership checks
 │   ├── cache.js          # Redis cache middleware
 │   ├── errorHandler.js   # Global error handler
 │   ├── rateLimiter.js    # Global & auth rate limiters
@@ -52,13 +58,16 @@ src/
 ├── routes/
 │   ├── index.js
 │   ├── authRoutes.js
-│   └── jobRoutes.js
+│   ├── jobRoutes.js
+│   └── userRoutes.js
 ├── tests/
 │   ├── auth.test.js
-│   └── jobs.test.js
+│   ├── jobs.test.js
+│   └── users.test.js
 ├── validators/
 │   ├── authValidator.js
-│   └── jobValidator.js
+│   ├── jobValidator.js
+│   └── userValidator.js
 ├── app.js
 └── server.js
 ```
@@ -86,8 +95,8 @@ DB_USER=postgres
 DB_PASSWORD=your_password
 
 # JWT
-JWT_ACCESS_SECRET=your_access_secret
-JWT_REFRESH_SECRET=your_refresh_secret
+JWT_ACCESS_SECRET=your_access_secret_here
+JWT_REFRESH_SECRET=your_refresh_secret_here
 JWT_ACCESS_EXPIRES=1d
 JWT_REFRESH_EXPIRES=7d
 
@@ -95,6 +104,8 @@ JWT_REFRESH_EXPIRES=7d
 REDIS_HOST=localhost
 REDIS_PORT=6379
 ```
+
+See `.env.example` for a full template.
 
 ## Running Locally
 
@@ -132,16 +143,17 @@ This starts three containers:
 GET /health
 ```
 
-**Response**
-```json
-{ "status": "ok" }
-```
-
 ---
 
 ### Authentication
 
 All auth endpoints are rate-limited to **10 requests per 15 minutes**.
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/v1/auth/register` | Register a new user |
+| `POST` | `/api/v1/auth/login` | Login and receive tokens |
+| `POST` | `/api/v1/auth/refresh` | Get a new access token via refresh token |
 
 #### Register
 
@@ -149,32 +161,19 @@ All auth endpoints are rate-limited to **10 requests per 15 minutes**.
 POST /api/v1/auth/register
 ```
 
-**Request Body**
 ```json
 {
-  "email": "user@example.com",
+  "email": "employer@example.com",
   "password": "secret123",
   "role": "employer"
 }
 ```
 
-| Field      | Type   | Required | Notes                              |
-|------------|--------|----------|------------------------------------|
-| `email`    | string | yes      | Valid email format                 |
-| `password` | string | yes      | Minimum 6 characters               |
-| `role`     | string | no       | `employer` or `candidate` (default: `candidate`) |
-
-**Response** `201 Created`
-```json
-{
-  "success": true,
-  "data": {
-    "user": { "id": "uuid", "email": "user@example.com", "role": "employer" },
-    "accessToken": "<jwt>",
-    "refreshToken": "<jwt>"
-  }
-}
-```
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| `email` | string | yes | Valid email |
+| `password` | string | yes | Min 6 characters |
+| `role` | string | no | `employer` or `candidate` (default: `candidate`) |
 
 #### Login
 
@@ -182,20 +181,26 @@ POST /api/v1/auth/register
 POST /api/v1/auth/login
 ```
 
-**Request Body**
 ```json
-{
-  "email": "user@example.com",
-  "password": "secret123"
-}
+{ "email": "employer@example.com", "password": "secret123" }
 ```
 
-**Response** `200 OK`
+#### Refresh Token
+
+```
+POST /api/v1/auth/refresh
+```
+
+```json
+{ "refreshToken": "<your-refresh-token>" }
+```
+
+**All token responses follow this shape:**
 ```json
 {
   "success": true,
   "data": {
-    "user": { "id": "uuid", "email": "user@example.com", "role": "employer" },
+    "user": { "id": "uuid", "email": "...", "role": "employer" },
     "accessToken": "<jwt>",
     "refreshToken": "<jwt>"
   }
@@ -204,41 +209,69 @@ POST /api/v1/auth/login
 
 ---
 
-### Jobs
+### Users
 
-All job endpoints require a valid JWT in the `Authorization` header:
+All user endpoints require a valid JWT: `Authorization: Bearer <accessToken>`
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/v1/users/me` | Get current user profile |
+| `PATCH` | `/api/v1/users/me/password` | Update password |
+
+#### Update Password
 
 ```
-Authorization: Bearer <accessToken>
+PATCH /api/v1/users/me/password
 ```
 
-#### List Jobs
-
-```
-GET /api/v1/jobs
-```
-
-Returns all active jobs ordered by newest first. Response is **cached in Redis for 60 seconds**.
-
-**Response** `200 OK`
 ```json
 {
-  "success": true,
-  "data": [ { "id": "uuid", "title": "...", "company": "...", ... } ]
+  "currentPassword": "old-password",
+  "newPassword": "new-password"
 }
 ```
 
-#### Get Job by ID
+---
+
+### Jobs
+
+All job endpoints require a valid JWT: `Authorization: Bearer <accessToken>`
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| `GET` | `/api/v1/jobs` | Any | List active jobs (paginated + filterable) |
+| `GET` | `/api/v1/jobs/:id` | Any | Get a single job |
+| `POST` | `/api/v1/jobs` | employer only | Create a job listing |
+| `PUT` | `/api/v1/jobs/:id` | employer + owner | Update a job listing |
+| `DELETE` | `/api/v1/jobs/:id` | employer + owner | Soft-delete a job listing |
+
+#### List Jobs — Query Parameters
 
 ```
-GET /api/v1/jobs/:id
+GET /api/v1/jobs?page=1&limit=10&title=developer&company=techco&location=remote&salary_min=3000&salary_max=8000
 ```
 
-**Response** `200 OK`
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `page` | integer | 1 | Page number |
+| `limit` | integer | 10 | Results per page (max 100) |
+| `title` | string | — | Case-insensitive partial match |
+| `company` | string | — | Case-insensitive partial match |
+| `location` | string | — | Case-insensitive partial match |
+| `salary_min` | integer | — | Jobs where `salary_min >= value` |
+| `salary_max` | integer | — | Jobs where `salary_max <= value` |
+
+**Response:**
 ```json
 {
   "success": true,
-  "data": { "id": "uuid", "title": "...", "company": "...", ... }
+  "data": [ { "id": "uuid", "title": "...", "company": "...", ... } ],
+  "pagination": {
+    "total": 42,
+    "page": 1,
+    "limit": 10,
+    "totalPages": 5
+  }
 }
 ```
 
@@ -248,7 +281,6 @@ GET /api/v1/jobs/:id
 POST /api/v1/jobs
 ```
 
-**Request Body**
 ```json
 {
   "title": "Backend Developer",
@@ -260,84 +292,47 @@ POST /api/v1/jobs
 }
 ```
 
-| Field         | Type    | Required | Notes                                |
-|---------------|---------|----------|--------------------------------------|
-| `title`       | string  | yes      | 3–100 characters                     |
-| `description` | string  | yes      | 10–1000 characters                   |
-| `company`     | string  | yes      | 2–100 characters                     |
-| `location`    | string  | no       | Max 100 characters                   |
-| `salary_min`  | integer | no       | Non-negative                         |
-| `salary_max`  | integer | no       | Must be >= `salary_min`              |
-
-**Response** `201 Created`
-```json
-{
-  "success": true,
-  "data": { "id": "uuid", "title": "Backend Developer", ... }
-}
-```
-
-> Creating a job invalidates the Redis cache for the job list.
-
-#### Update Job
-
-```
-PUT /api/v1/jobs/:id
-```
-
-Accepts the same fields as Create (all optional except `description`). Invalidates the Redis cache on success.
-
-**Response** `200 OK`
-```json
-{
-  "success": true,
-  "data": { "id": "uuid", "title": "Updated Title", ... }
-}
-```
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| `title` | string | yes | 3–100 characters |
+| `description` | string | yes | 10–1000 characters |
+| `company` | string | yes | 2–100 characters |
+| `location` | string | no | Max 100 characters |
+| `salary_min` | integer | no | Non-negative |
+| `salary_max` | integer | no | Must be >= `salary_min` |
 
 #### Delete Job
 
-```
-DELETE /api/v1/jobs/:id
-```
-
-Performs a **soft delete** by setting `is_active` to `false`. The job is no longer returned in the list but remains in the database. Invalidates the Redis cache on success.
-
-**Response** `200 OK`
-```json
-{
-  "success": true,
-  "message": "Job removed successfully"
-}
-```
+`DELETE /api/v1/jobs/:id` performs a **soft delete** — sets `is_active` to `false`. The job is excluded from listings but remains in the database.
 
 ---
 
 ### Error Responses
 
-| Status | Meaning                          |
-|--------|----------------------------------|
-| `400`  | Validation error (invalid input) |
-| `401`  | Missing or invalid JWT           |
-| `404`  | Resource not found               |
-| `409`  | Conflict (e.g. duplicate email)  |
-| `429`  | Rate limit exceeded              |
+| Status | Meaning |
+|--------|---------|
+| `400` | Validation error |
+| `401` | Missing/invalid JWT or wrong password |
+| `403` | Forbidden (wrong role or not the owner) |
+| `404` | Resource not found |
+| `409` | Conflict (e.g. duplicate email) |
+| `429` | Rate limit exceeded |
 
-All error responses follow this shape:
+All errors follow this shape:
 ```json
 { "success": false, "message": "Error description" }
 ```
 
 ## Rate Limiting
 
-| Limiter | Scope              | Limit             |
-|---------|--------------------|-------------------|
-| Global  | All routes         | 100 req / 15 min  |
-| Auth    | `/api/v1/auth/*`   | 10 req / 15 min   |
+| Limiter | Scope | Limit |
+|---------|-------|-------|
+| Global | All routes | 100 req / 15 min |
+| Auth | `/api/v1/auth/*` | 10 req / 15 min |
 
 ## Caching
 
-`GET /api/v1/jobs` responses are cached in Redis with a **60-second TTL**. The cache is automatically invalidated whenever a job is created, updated, or deleted.
+Job listing responses are cached in Redis with a **60-second TTL per unique URL** (including query params). The cache is automatically invalidated across all cached job queries whenever a job is created, updated, or deleted.
 
 ## Running Tests
 
@@ -347,11 +342,13 @@ Tests use a separate database configured via `.env.test`.
 npm test
 ```
 
-Test suites:
-- `auth.test.js` — register & login flows (success, validation errors, duplicate email)
-- `jobs.test.js` — job CRUD flows (authentication guard, create, validation errors)
+| Test file | Coverage |
+|-----------|----------|
+| `auth.test.js` | Register, login (success, validation errors, duplicates) |
+| `jobs.test.js` | CRUD, role enforcement, ownership, pagination, filtering |
+| `users.test.js` | Profile retrieval, password update |
 
-> The test database is synced with `{ force: true }` before each suite, so it starts clean every run.
+> The test database is re-created with `{ force: true }` before each suite.
 
 ## API Documentation
 
