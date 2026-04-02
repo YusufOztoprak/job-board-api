@@ -9,13 +9,52 @@ const { createJobSchema, updateJobSchema } = require('../validators/jobValidator
  * @swagger
  * /jobs:
  *   get:
- *     summary: Get all active job listings
+ *     summary: Get active job listings with pagination and filtering
  *     tags: [Jobs]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *           maximum: 100
+ *         description: Results per page
+ *       - in: query
+ *         name: title
+ *         schema:
+ *           type: string
+ *         description: Filter by title (case-insensitive partial match)
+ *       - in: query
+ *         name: company
+ *         schema:
+ *           type: string
+ *         description: Filter by company name (case-insensitive partial match)
+ *       - in: query
+ *         name: location
+ *         schema:
+ *           type: string
+ *         description: Filter by location (case-insensitive partial match)
+ *       - in: query
+ *         name: salary_min
+ *         schema:
+ *           type: integer
+ *         description: Minimum salary filter (salary_min >= value)
+ *       - in: query
+ *         name: salary_max
+ *         schema:
+ *           type: integer
+ *         description: Maximum salary filter (salary_max <= value)
  *     responses:
  *       200:
- *         description: List of active jobs (cached for 60 seconds)
+ *         description: Paginated list of active jobs (cached per unique query)
  *         content:
  *           application/json:
  *             schema:
@@ -27,6 +66,8 @@ const { createJobSchema, updateJobSchema } = require('../validators/jobValidator
  *                   type: array
  *                   items:
  *                     $ref: '#/components/schemas/Job'
+ *                 pagination:
+ *                   $ref: '#/components/schemas/Pagination'
  *       401:
  *         description: Unauthorized
  *         content:
