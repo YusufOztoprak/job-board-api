@@ -71,4 +71,32 @@ const login = async (req, res, next) => {
     }
 };
 
-module.exports = { register, login };
+const refresh = async (req, res, next) => {
+    try {
+        const { refreshToken } = req.body;
+
+        if (!refreshToken) {
+            return res.status(401).json({ success: false, message: 'Refresh token required' });
+        }
+
+        let decoded;
+        try {
+            decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+        } catch (err) {
+            return res.status(401).json({ success: false, message: 'Invalid or expired refresh token' });
+        }
+
+        const user = await User.findByPk(decoded.userId);
+        if (!user) {
+            return res.status(401).json({ success: false, message: 'User not found' });
+        }
+
+        const tokens = generateTokens(user.id, user.role);
+
+        res.json({ success: true, data: tokens });
+    } catch (err) {
+        next(err);
+    }
+};
+
+module.exports = { register, login, refresh };

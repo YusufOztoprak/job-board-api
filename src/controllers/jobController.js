@@ -36,7 +36,7 @@ const createJob = async (req, res, next) => {
             userId: req.user.userId,
         });
 
-        await redis.del('cache:/api/v1/jobs');
+        redis.del('cache:/api/v1/jobs').catch(() => {});
 
         res.status(201).json({ success: true, data: job });
     } catch (err) {
@@ -46,13 +46,9 @@ const createJob = async (req, res, next) => {
 
 const updateJob = async (req, res, next) => {
     try {
-        const job = await Job.findByPk(req.params.id);
-        if (!job) return res.status(404).json({ success: false, message: 'Job not found' });
-        await job.update(req.body);
-
-        await redis.del('cache:/api/v1/jobs');
-
-        res.json({ success: true, data: job });
+        await req.job.update(req.body);
+        redis.del('cache:/api/v1/jobs').catch(() => {});
+        res.json({ success: true, data: req.job });
     } catch (err) {
         next(err);
     }
@@ -60,12 +56,8 @@ const updateJob = async (req, res, next) => {
 
 const deleteJob = async (req, res, next) => {
     try {
-        const job = await Job.findByPk(req.params.id);
-        if (!job) return res.status(404).json({ success: false, message: 'Job not found' });
-        await job.update({ is_active: false });
-
-        await redis.del('cache:/api/v1/jobs');
-
+        await req.job.update({ is_active: false });
+        redis.del('cache:/api/v1/jobs').catch(() => {});
         res.json({ success: true, message: 'Job removed successfully' });
     } catch (err) {
         next(err);
