@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "start": "node src/app.js",
+    "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "test": "cross-env NODE_ENV=test jest --forceExit"
   },
@@ -14,9 +14,11 @@
   "description": "",
   "dependencies": {
     "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^4.22.1",
     "express-rate-limit": "^8.3.1",
+    "helmet": "^8.1.0",
     "ioredis": "^5.10.0",
     "joi": "^18.1.1",
     "jsonwebtoken": "^9.0.3",

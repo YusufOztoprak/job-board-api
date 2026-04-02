@@ -46,7 +46,7 @@ const getAllJobs = async (req, res, next) => {
 
 const getJobById = async (req, res, next) => {
     try {
-        const job = await Job.findByPk(req.params.id);
+        const job = await Job.findOne({ where: { id: req.params.id, is_active: true } });
         if (!job) return res.status(404).json({ success: false, message: 'Job not found' });
         res.json({ success: true, data: job });
     } catch (err) {

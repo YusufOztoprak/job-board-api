@@ -3,6 +3,8 @@ require('dotenv').config({
     override: true,
 });
 const express = require('express');
+const helmet = require('helmet');
+const cors = require('cors');
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./config/swagger');
 const routes = require('./routes');
@@ -11,6 +13,8 @@ const { globalLimiter } = require('./middleware/rateLimiter');
 
 const app = express();
 
+app.use(helmet());
+app.use(cors());
 app.use(express.json());
 app.use(globalLimiter);
 
