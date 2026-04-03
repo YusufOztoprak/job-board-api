@@ -11,7 +11,10 @@ const start = async () => {
         await sequelize.sync({ alter: true });
         console.log('Models synchronized with the database');
 
-        app.listen(PORT, () => console.log(`Server is running: http://localhost:${PORT}`));
+        // Fixed syntax error, used the correct PORT variable, and bound to "0.0.0.0"
+        app.listen(PORT, "0.0.0.0", () => {
+            console.log(`Server is running on port ${PORT}`);
+        });
     } catch (err) {
         console.error('Error:', err);
         process.exit(1);
