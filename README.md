@@ -1,5 +1,14 @@
 # Job Board API
 
+![Node.js](https://img.shields.io/badge/Node.js-18-green)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue)
+![Redis](https://img.shields.io/badge/Redis-Cache-red)
+![Tests](https://img.shields.io/badge/Tests-11%20passing-brightgreen)
+![Deployed](https://img.shields.io/badge/Deployed-Railway-purple)
+
+> 🚀 **Live API:** https://job-board-api-production-d184.up.railway.app
+> 📖 **Swagger Docs:** https://job-board-api-production-d184.up.railway.app/api-docs
+
 A RESTful API for a job board platform built with Node.js and Express. Supports JWT authentication, role-based access control, job listing management with pagination and filtering, and Redis caching.
 
 ## Features
