@@ -363,6 +363,6 @@ npm test
 
 Swagger UI is available at:
 
-```
-http://localhost:3000/api-docs
-```
+**Local:** `http://localhost:3000/api-docs`
+
+**Production:** https://job-board-api-production-d184.up.railway.app/api-docs
