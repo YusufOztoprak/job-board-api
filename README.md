@@ -3,7 +3,7 @@
 ![Node.js](https://img.shields.io/badge/Node.js-18-green)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue)
 ![Redis](https://img.shields.io/badge/Redis-Cache-red)
-![Tests](https://img.shields.io/badge/Tests-11%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/Tests-39%20passing-brightgreen)
 ![Deployed](https://img.shields.io/badge/Deployed-Railway-purple)
 
 > 🚀 **Live API:** https://job-board-api-production-d184.up.railway.app
@@ -16,15 +16,17 @@ A RESTful API for a job board platform built with Node.js and Express. Supports 
 - JWT authentication with access & refresh tokens
 - Role-based access: `employer` and `candidate`
 - Full CRUD for job listings (soft delete via `is_active` flag)
+- Public job browsing — `GET /jobs` and `GET /jobs/:id` require no token
 - Pagination and filtering on job listings (title, company, location, salary range)
 - Redis caching on job listings (60-second TTL, auto-invalidated on write)
 - Role + ownership enforcement (only employers can post, only the owner can edit/delete)
+- Job applications — candidates apply, employers review and update status
 - User profile endpoint with password update
 - Request validation with Joi
 - Rate limiting: 100 req/15min globally, 10 req/15min on auth endpoints
 - Swagger UI API documentation at `/api-docs`
 - Docker & docker-compose support
-- Integration tests with Jest + Supertest (25 tests)
+- Integration tests with Jest + Supertest (39 tests)
 
 ## Tech Stack
 
@@ -50,9 +52,10 @@ src/
 │   ├── redis.js          # ioredis client
 │   └── swagger.js        # Swagger spec
 ├── controllers/
-│   ├── authController.js # register, login, refresh
-│   ├── jobController.js  # CRUD + pagination + filtering
-│   └── userController.js # profile, password update
+│   ├── authController.js         # register, login, refresh
+│   ├── applicationController.js  # apply, list, status update, withdraw
+│   ├── jobController.js          # CRUD + pagination + filtering
+│   └── userController.js         # profile, password update
 ├── middleware/
 │   ├── authenticate.js   # JWT verification
 │   ├── authorize.js      # role & ownership checks
@@ -62,18 +65,22 @@ src/
 │   └── validate.js       # Joi validation middleware
 ├── models/
 │   ├── index.js
+│   ├── Application.js
 │   ├── User.js
 │   └── Job.js
 ├── routes/
 │   ├── index.js
+│   ├── applicationRoutes.js
 │   ├── authRoutes.js
 │   ├── jobRoutes.js
 │   └── userRoutes.js
 ├── tests/
+│   ├── applications.test.js
 │   ├── auth.test.js
 │   ├── jobs.test.js
 │   └── users.test.js
 ├── validators/
+│   ├── applicationValidator.js
 │   ├── authValidator.js
 │   ├── jobValidator.js
 │   └── userValidator.js
@@ -244,13 +251,12 @@ PATCH /api/v1/users/me/password
 
 ### Jobs
 
-All job endpoints require a valid JWT: `Authorization: Bearer <accessToken>`
-
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| `GET` | `/api/v1/jobs` | Any | List active jobs (paginated + filterable) |
-| `GET` | `/api/v1/jobs/:id` | Any | Get a single job |
-| `POST` | `/api/v1/jobs` | employer only | Create a job listing |
+| `GET` | `/api/v1/jobs` | — | List active jobs (paginated + filterable) |
+| `GET` | `/api/v1/jobs/:id` | — | Get a single job |
+| `GET` | `/api/v1/jobs/:jobId/applications` | employer + owner | List applications for a job |
+| `POST` | `/api/v1/jobs` | employer | Create a job listing |
 | `PUT` | `/api/v1/jobs/:id` | employer + owner | Update a job listing |
 | `DELETE` | `/api/v1/jobs/:id` | employer + owner | Soft-delete a job listing |
 
@@ -316,6 +322,77 @@ POST /api/v1/jobs
 
 ---
 
+### Applications
+
+Candidates apply to jobs; employers manage application status. Requires `Authorization: Bearer <accessToken>` on all endpoints.
+
+| Method | Endpoint | Role | Description |
+|--------|----------|------|-------------|
+| `POST` | `/api/v1/applications` | candidate | Submit an application |
+| `GET` | `/api/v1/applications/me` | candidate | List my applications (paginated) |
+| `PATCH` | `/api/v1/applications/:id/status` | employer + job owner | Update application status |
+| `DELETE` | `/api/v1/applications/:id` | candidate + owner | Withdraw an application |
+
+#### Submit an Application
+
+```
+POST /api/v1/applications
+```
+
+```json
+{
+  "jobId": "uuid-of-the-job",
+  "cover_letter": "I am excited about this opportunity because..."
+}
+```
+
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| `jobId` | UUID | yes | Must be an active job |
+| `cover_letter` | string | yes | 10–2000 characters |
+
+**Rules:**
+- Only `candidate` role can apply.
+- The job must exist and be active (`is_active: true`).
+- A candidate may not apply to the same job twice (returns `409`).
+
+#### List My Applications
+
+```
+GET /api/v1/applications/me?page=1&limit=10
+```
+
+Returns paginated applications with the associated job object embedded in each row.
+
+#### Update Application Status
+
+```
+PATCH /api/v1/applications/:id/status
+```
+
+```json
+{ "status": "reviewed" }
+```
+
+| Value | Description |
+|-------|-------------|
+| `pending` | Initial state |
+| `reviewed` | Employer has reviewed |
+| `accepted` | Offer extended |
+| `rejected` | Not moving forward |
+
+Only the employer who owns the job the application is for can change its status.
+
+#### Withdraw an Application
+
+```
+DELETE /api/v1/applications/:id
+```
+
+Hard-deletes the application record. The candidate may re-apply to the same job afterwards.
+
+---
+
 ### Error Responses
 
 | Status | Meaning |
@@ -354,8 +431,9 @@ npm test
 | Test file | Coverage |
 |-----------|----------|
 | `auth.test.js` | Register, login (success, validation errors, duplicates) |
-| `jobs.test.js` | CRUD, role enforcement, ownership, pagination, filtering |
+| `jobs.test.js` | CRUD, role enforcement, ownership, pagination, filtering, public access |
 | `users.test.js` | Profile retrieval, password update |
+| `applications.test.js` | Apply, duplicate prevention, role checks, list, status update, withdraw, public route regression |
 
 > The test database is re-created with `{ force: true }` before each suite.
 
