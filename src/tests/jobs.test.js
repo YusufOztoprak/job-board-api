@@ -46,9 +46,9 @@ afterAll(async () => {
 
 describe('Jobs Endpoints', () => {
     describe('GET /api/v1/jobs', () => {
-        it('should return 401 without token', async () => {
+        it('should return 200 without token', async () => {
             const res = await request(app).get('/api/v1/jobs');
-            expect(res.statusCode).toBe(401);
+            expect(res.statusCode).toBe(200);
         });
 
         it('should return paginated jobs list', async () => {

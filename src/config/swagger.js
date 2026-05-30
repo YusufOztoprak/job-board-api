@@ -66,6 +66,18 @@ const options = {
                         },
                     },
                 },
+                Application: {
+                    type: 'object',
+                    properties: {
+                        id: { type: 'string', format: 'uuid' },
+                        cover_letter: { type: 'string' },
+                        status: { type: 'string', enum: ['pending', 'reviewed', 'accepted', 'rejected'] },
+                        userId: { type: 'string', format: 'uuid' },
+                        jobId: { type: 'string', format: 'uuid' },
+                        createdAt: { type: 'string', format: 'date-time' },
+                        updatedAt: { type: 'string', format: 'date-time' },
+                    },
+                },
                 Error: {
                     type: 'object',
                     properties: {

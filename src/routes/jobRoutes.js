@@ -1,5 +1,7 @@
 const router = require('express').Router();
 const { getAllJobs, getJobById, createJob, updateJob, deleteJob } = require('../controllers/jobController');
+const { getJobApplications } = require('../controllers/applicationController');
+const authenticate = require('../middleware/authenticate');
 const cache = require('../middleware/cache');
 const validate = require('../middleware/validate');
 const { requireRole, requireOwnership } = require('../middleware/authorize');
@@ -11,8 +13,6 @@ const { createJobSchema, updateJobSchema } = require('../validators/jobValidator
  *   get:
  *     summary: Get active job listings with pagination and filtering
  *     tags: [Jobs]
- *     security:
- *       - bearerAuth: []
  *     parameters:
  *       - in: query
  *         name: page
@@ -68,12 +68,6 @@ const { createJobSchema, updateJobSchema } = require('../validators/jobValidator
  *                     $ref: '#/components/schemas/Job'
  *                 pagination:
  *                   $ref: '#/components/schemas/Pagination'
- *       401:
- *         description: Unauthorized
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
  */
 router.get('/', cache(60), getAllJobs);
 
@@ -83,8 +77,6 @@ router.get('/', cache(60), getAllJobs);
  *   get:
  *     summary: Get a job by ID
  *     tags: [Jobs]
- *     security:
- *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -174,7 +166,7 @@ router.get('/:id', getJobById);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post('/', requireRole('employer'), validate(createJobSchema), createJob);
+router.post('/', authenticate, requireRole('employer'), validate(createJobSchema), createJob);
 
 /**
  * @swagger
@@ -237,7 +229,7 @@ router.post('/', requireRole('employer'), validate(createJobSchema), createJob);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.put('/:id', requireRole('employer'), requireOwnership, validate(updateJobSchema), updateJob);
+router.put('/:id', authenticate, requireRole('employer'), requireOwnership, validate(updateJobSchema), updateJob);
 
 /**
  * @swagger
@@ -279,6 +271,63 @@ router.put('/:id', requireRole('employer'), requireOwnership, validate(updateJob
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.delete('/:id', requireRole('employer'), requireOwnership, deleteJob);
+router.delete('/:id', authenticate, requireRole('employer'), requireOwnership, deleteJob);
+
+/**
+ * @swagger
+ * /jobs/{jobId}/applications:
+ *   get:
+ *     summary: List applications for a job (owning employer only)
+ *     tags: [Applications]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: jobId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *           maximum: 100
+ *     responses:
+ *       200:
+ *         description: Paginated list of applications for the job
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Application'
+ *                 pagination:
+ *                   $ref: '#/components/schemas/Pagination'
+ *       403:
+ *         description: Forbidden – not the job owner
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Job not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.get('/:jobId/applications', authenticate, requireRole('employer'), getJobApplications);
 
 module.exports = router;
