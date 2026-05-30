@@ -23,6 +23,8 @@ const User = sequelize.define('User', {
         allowNull: false,
         defaultValue: 'candidate',
     },
+}, {
+    tableName: 'users',
 });
 
 // Hash password before saving
