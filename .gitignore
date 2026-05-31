@@ -4,3 +4,6 @@ node_modules/
 .env.local
 .env.production
 frontend/.env
+
+# Local notes, not tracked
+CLAUDE.md

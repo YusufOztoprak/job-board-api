@@ -4,10 +4,10 @@
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue)
 ![Redis](https://img.shields.io/badge/Redis-Cache-red)
 ![Tests](https://img.shields.io/badge/Tests-39%20passing-brightgreen)
-![Deployed](https://img.shields.io/badge/Deployed-Railway-purple)
+![Deployed](https://img.shields.io/badge/Deployed-Render-46E3B7)
 
-> 🚀 **Live API:** https://job-board-api-production-d184.up.railway.app
-> 📖 **Swagger Docs:** https://job-board-api-production-d184.up.railway.app/api-docs
+> 🚀 **Live API:** https://job-board-api-ghrj.onrender.com
+> 📖 **Swagger Docs:** https://job-board-api-ghrj.onrender.com/api-docs
 
 A RESTful API for a job board platform built with Node.js and Express. Supports JWT authentication, role-based access control, job listing management with pagination and filtering, and Redis caching.
 
@@ -443,4 +443,5 @@ Swagger UI is available at:
 
 **Local:** `http://localhost:3000/api-docs`
 
-**Production:** https://job-board-api-production-d184.up.railway.app/api-docs
+**Production:** https://job-board-api-ghrj.onrender.com/api-docs
+
