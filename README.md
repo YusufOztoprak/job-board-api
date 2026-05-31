@@ -275,6 +275,8 @@ GET /api/v1/jobs?page=1&limit=10&title=developer&company=techco&location=remote&
 | `location` | string | — | Case-insensitive partial match |
 | `salary_min` | integer | — | Jobs where `salary_min >= value` |
 | `salary_max` | integer | — | Jobs where `salary_max <= value` |
+| `sort` | string | `createdAt` | Sort field: `createdAt`, `salary_min`, or `salary_max` (invalid values fall back to `createdAt`) |
+| `order` | string | `desc` | Sort direction: `asc` or `desc` (invalid values fall back to `desc`) |
 
 **Response:**
 ```json

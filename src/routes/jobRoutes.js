@@ -52,6 +52,20 @@ const { createJobSchema, updateJobSchema } = require('../validators/jobValidator
  *         schema:
  *           type: integer
  *         description: Maximum salary filter (salary_max <= value)
+ *       - in: query
+ *         name: sort
+ *         schema:
+ *           type: string
+ *           enum: [createdAt, salary_min, salary_max]
+ *           default: createdAt
+ *         description: Field to sort by (invalid values fall back to createdAt)
+ *       - in: query
+ *         name: order
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *           default: desc
+ *         description: Sort direction (invalid values fall back to desc)
  *     responses:
  *       200:
  *         description: Paginated list of active jobs (cached per unique query)

@@ -2,6 +2,9 @@ const { Op } = require('sequelize');
 const { Job } = require('../models');
 const redis = require('../config/redis');
 
+const ALLOWED_SORTS = ['createdAt', 'salary_min', 'salary_max'];
+const ALLOWED_ORDERS = ['asc', 'desc'];
+
 const clearJobsCache = async () => {
     const keys = await redis.keys('cache:/api/v1/jobs*');
     if (keys.length > 0) await redis.del(...keys);
@@ -10,6 +13,11 @@ const clearJobsCache = async () => {
 const getAllJobs = async (req, res, next) => {
     try {
         const { page = 1, limit = 10, title, company, location, salary_min, salary_max } = req.query;
+
+        const sortParam = ALLOWED_SORTS.includes(req.query.sort) ? req.query.sort : 'createdAt';
+        const orderParam = ALLOWED_ORDERS.includes(req.query.order?.toLowerCase())
+            ? req.query.order.toLowerCase()
+            : 'desc';
 
         const pageNum = Math.max(1, parseInt(page));
         const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
@@ -22,9 +30,15 @@ const getAllJobs = async (req, res, next) => {
         if (salary_min) where.salary_min = { [Op.gte]: parseInt(salary_min) };
         if (salary_max) where.salary_max = { [Op.lte]: parseInt(salary_max) };
 
+        const isSalarySort = sortParam === 'salary_min' || sortParam === 'salary_max';
+        const direction = isSalarySort
+            ? `${orderParam.toUpperCase()} NULLS LAST`
+            : orderParam.toUpperCase();
+        const orderClause = [[sortParam, direction]];
+
         const { count, rows } = await Job.findAndCountAll({
             where,
-            order: [['createdAt', 'DESC']],
+            order: orderClause,
             limit: limitNum,
             offset,
         });

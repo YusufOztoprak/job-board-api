@@ -100,6 +100,45 @@ describe('Jobs Endpoints', () => {
             expect(res.statusCode).toBe(200);
             expect(res.body.data.every(j => j.salary_min >= 5000)).toBe(true);
         });
+
+        it('should return rows ordered by salary_min ascending when sort=salary_min&order=asc', async () => {
+            await Promise.all([
+                request(app).post('/api/v1/jobs').set('Authorization', `Bearer ${employerToken}`).send({
+                    title: 'Junior Developer',
+                    description: 'Entry-level position for a motivated junior developer.',
+                    company: 'StartupCo',
+                    location: 'Remote',
+                    salary_min: 1500,
+                    salary_max: 2500,
+                }),
+                request(app).post('/api/v1/jobs').set('Authorization', `Bearer ${employerToken}`).send({
+                    title: 'Senior Engineer',
+                    description: 'Senior engineering role requiring extensive experience.',
+                    company: 'BigTech',
+                    location: 'Remote',
+                    salary_min: 10000,
+                    salary_max: 15000,
+                }),
+            ]);
+
+            const res = await request(app).get('/api/v1/jobs?sort=salary_min&order=asc&limit=100');
+
+            expect(res.statusCode).toBe(200);
+            const salaries = res.body.data
+                .filter(j => j.salary_min !== null)
+                .map(j => j.salary_min);
+            for (let i = 1; i < salaries.length; i++) {
+                expect(salaries[i]).toBeGreaterThanOrEqual(salaries[i - 1]);
+            }
+        });
+
+        it('should return 200 with default order when sort and order params are invalid', async () => {
+            const res = await request(app).get('/api/v1/jobs?sort=invalid&order=garbage');
+
+            expect(res.statusCode).toBe(200);
+            expect(res.body.success).toBe(true);
+            expect(Array.isArray(res.body.data)).toBe(true);
+        });
     });
 
     describe('POST /api/v1/jobs', () => {
