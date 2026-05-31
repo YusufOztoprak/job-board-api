@@ -5,6 +5,7 @@ import RoleRoute from './components/RoleRoute';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import JobDetailPage from './pages/JobDetailPage';
 import MyApplicationsPage from './pages/MyApplicationsPage';
 import DashboardPage from './pages/admin/DashboardPage';
 import JobsPage from './pages/admin/JobsPage';
@@ -18,6 +19,7 @@ export default function App() {
                 <Route index element={<HomePage />} />
                 <Route path="login" element={<LoginPage />} />
                 <Route path="register" element={<RegisterPage />} />
+                <Route path="jobs/:id" element={<JobDetailPage />} />
 
                 <Route element={<ProtectedRoute />}>
                     <Route path="applications" element={<MyApplicationsPage />} />
