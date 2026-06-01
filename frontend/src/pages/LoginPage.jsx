@@ -1,10 +1,13 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export default function LoginPage() {
     const { login } = useAuth();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const next = searchParams.get('next') || '/';
+
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
@@ -16,7 +19,7 @@ export default function LoginPage() {
         setLoading(true);
         try {
             await login({ email, password });
-            navigate('/');
+            navigate(next, { replace: true });
         } catch (err) {
             setError(err.response?.data?.message || 'Login failed. Please try again.');
         } finally {
@@ -26,7 +29,11 @@ export default function LoginPage() {
 
     return (
         <div className="max-w-md mx-auto mt-12 p-6 border border-gray-200 rounded-lg shadow-sm bg-white">
-            <h1 className="text-2xl font-bold text-gray-900 mb-6">Sign in</h1>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Sign in</h1>
+
+            {next !== '/' && (
+                <p className="text-sm text-gray-500 mb-4">Please log in to continue.</p>
+            )}
 
             {error && (
                 <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded text-sm">
@@ -72,7 +79,10 @@ export default function LoginPage() {
 
             <p className="mt-4 text-sm text-center text-gray-600">
                 No account?{' '}
-                <Link to="/register" className="text-blue-600 hover:underline">
+                <Link
+                    to={`/register${next !== '/' ? `?next=${encodeURIComponent(next)}` : ''}`}
+                    className="text-blue-600 hover:underline"
+                >
                     Register
                 </Link>
             </p>

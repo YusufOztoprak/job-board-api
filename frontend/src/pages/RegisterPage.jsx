@@ -1,10 +1,13 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export default function RegisterPage() {
     const { register } = useAuth();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const next = searchParams.get('next') || '/';
+
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [role, setRole] = useState('candidate');
@@ -17,7 +20,7 @@ export default function RegisterPage() {
         setLoading(true);
         try {
             await register({ email, password, role });
-            navigate('/');
+            navigate(next, { replace: true });
         } catch (err) {
             setError(err.response?.data?.message || 'Registration failed. Please try again.');
         } finally {
@@ -105,7 +108,10 @@ export default function RegisterPage() {
 
             <p className="mt-4 text-sm text-center text-gray-600">
                 Already have an account?{' '}
-                <Link to="/login" className="text-blue-600 hover:underline">
+                <Link
+                    to={`/login${next !== '/' ? `?next=${encodeURIComponent(next)}` : ''}`}
+                    className="text-blue-600 hover:underline"
+                >
                     Sign in
                 </Link>
             </p>
