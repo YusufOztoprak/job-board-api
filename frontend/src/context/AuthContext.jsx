@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import * as authApi from '../api/auth';
 import { clearSession, getStoredUser, setSession } from '../storage/tokens';
+import { clearApplied } from '../storage/applied';
 
 const AuthContext = createContext(null);
 
@@ -24,6 +25,7 @@ export function AuthProvider({ children }) {
 
     const logout = () => {
         clearSession();
+        clearApplied();
         setUser(null);
     };
 

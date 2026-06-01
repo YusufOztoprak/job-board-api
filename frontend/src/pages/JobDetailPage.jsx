@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { getJob } from '../api/jobs';
 import { useAuth } from '../context/AuthContext';
+import { hasApplied, markApplied } from '../storage/applied';
+import ApplyModal from '../components/ApplyModal';
 
 const numFmt = new Intl.NumberFormat();
 
@@ -53,6 +55,8 @@ export default function JobDetailPage() {
     const [notFound, setNotFound] = useState(false);
     const [error, setError] = useState(null);
     const [retryKey, setRetryKey] = useState(0);
+    const [modalOpen, setModalOpen] = useState(false);
+    const [applied, setApplied] = useState(false);
 
     useEffect(() => {
         let cancelled = false;
@@ -63,7 +67,9 @@ export default function JobDetailPage() {
         getJob(id)
             .then(res => {
                 if (!cancelled) {
-                    setJob(res.data.data);
+                    const jobData = res.data.data;
+                    setJob(jobData);
+                    setApplied(hasApplied(jobData.id));
                     setLoading(false);
                 }
             })
@@ -77,6 +83,13 @@ export default function JobDetailPage() {
 
         return () => { cancelled = true; };
     }, [id, retryKey]);
+
+    const handleApplySuccess = () => {
+        if (job) {
+            markApplied(job.id);
+            setApplied(true);
+        }
+    };
 
     if (loading) {
         return (
@@ -134,14 +147,33 @@ export default function JobDetailPage() {
         applySection = (
             <p className="text-gray-400 text-sm">Employers cannot apply to jobs.</p>
         );
+    } else if (applied) {
+        applySection = (
+            <div>
+                <span className="text-gray-400 text-sm">Application submitted</span>
+                <div className="mt-1">
+                    <Link to="/applications" className="text-sm text-blue-600 hover:underline">
+                        View in My Applications →
+                    </Link>
+                </div>
+            </div>
+        );
     } else {
         applySection = (
-            <button
-                onClick={() => alert('Apply flow coming in the next phase.')}
-                className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700"
-            >
-                Apply for this job
-            </button>
+            <>
+                <button
+                    onClick={() => setModalOpen(true)}
+                    className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700"
+                >
+                    Apply for this job
+                </button>
+                <ApplyModal
+                    job={job}
+                    isOpen={modalOpen}
+                    onClose={() => setModalOpen(false)}
+                    onSuccess={handleApplySuccess}
+                />
+            </>
         );
     }
 
