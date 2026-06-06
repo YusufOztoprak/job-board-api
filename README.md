@@ -10,7 +10,7 @@
 
 | Service | URL |
 |---------|-----|
-| Frontend | https://jobhub-frontend.vercel.app *(replace after Vercel deploy)* |
+| Frontend | https://jobhub-frontend-beta.vercel.app |
 | Backend API | https://job-board-api-ghrj.onrender.com |
 | Swagger docs | https://job-board-api-ghrj.onrender.com/api-docs |
 
