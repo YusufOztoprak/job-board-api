@@ -395,6 +395,43 @@ Hard-deletes the application record. The candidate may re-apply to the same job 
 
 ---
 
+### Admin
+
+Employer-only endpoints for managing jobs and reviewing applications. All require `Authorization: Bearer <accessToken>` and the `employer` role.
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/v1/admin/stats` | Aggregate stats for the employer's jobs and applications |
+| `GET` | `/api/v1/admin/jobs` | List all employer's jobs, including soft-deleted ones (paginated) |
+| `GET` | `/api/v1/admin/applications` | List all applications across employer's jobs (paginated, filterable by `jobId`) |
+
+#### GET /api/v1/admin/stats
+
+Returns counts scoped to the requesting employer's data only.
+
+```json
+{
+  "success": true,
+  "data": {
+    "jobs": { "active": 4, "inactive": 1, "total": 5 },
+    "applications": {
+      "total": 12,
+      "byStatus": { "pending": 5, "reviewed": 3, "accepted": 2, "rejected": 2 }
+    }
+  }
+}
+```
+
+#### GET /api/v1/admin/jobs
+
+Lists all jobs owned by the employer (including `is_active: false`). Supports `page` and `limit` query params. Response shape is identical to `GET /jobs`.
+
+#### GET /api/v1/admin/applications
+
+Lists all applications for any of the employer's jobs. Supports `page`, `limit`, and optional `jobId` filter. Each application includes the nested `job` and `candidate` objects (`candidate` exposes only `id` and `email`).
+
+---
+
 ### Error Responses
 
 | Status | Meaning |

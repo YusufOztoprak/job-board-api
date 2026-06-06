@@ -11,7 +11,7 @@ const createJobSchema = Joi.object({
 
 const updateJobSchema = Joi.object({
     title: Joi.string().min(3).max(100),
-    description: Joi.string().min(10).max(1000).required(),
+    description: Joi.string().min(10).max(1000),
     company: Joi.string().min(2).max(100),
     location: Joi.string().max(100),
     salary_min: Joi.number().integer().min(0),
