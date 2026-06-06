@@ -1,34 +1,56 @@
-# Job Board API
+# JobHub — Job Board Platform
 
 ![Node.js](https://img.shields.io/badge/Node.js-18-green)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue)
 ![Redis](https://img.shields.io/badge/Redis-Cache-red)
-![Tests](https://img.shields.io/badge/Tests-39%20passing-brightgreen)
-![Deployed](https://img.shields.io/badge/Deployed-Render-46E3B7)
+![Tests](https://img.shields.io/badge/Tests-54%20passing-brightgreen)
+![Deployed](https://img.shields.io/badge/API-Render-46E3B7)
 
-> 🚀 **Live API:** https://job-board-api-ghrj.onrender.com
-> 📖 **Swagger Docs:** https://job-board-api-ghrj.onrender.com/api-docs
+## Live demo
 
-A RESTful API for a job board platform built with Node.js and Express. Supports JWT authentication, role-based access control, job listing management with pagination and filtering, and Redis caching.
+| Service | URL |
+|---------|-----|
+| Frontend | https://jobhub-frontend.vercel.app *(replace after Vercel deploy)* |
+| Backend API | https://job-board-api-ghrj.onrender.com |
+| Swagger docs | https://job-board-api-ghrj.onrender.com/api-docs |
 
-## Features
+## About
 
-- JWT authentication with access & refresh tokens
-- Role-based access: `employer` and `candidate`
-- Full CRUD for job listings (soft delete via `is_active` flag)
-- Public job browsing — `GET /jobs` and `GET /jobs/:id` require no token
-- Pagination and filtering on job listings (title, company, location, salary range)
-- Redis caching on job listings (60-second TTL, auto-invalidated on write)
-- Role + ownership enforcement (only employers can post, only the owner can edit/delete)
-- Job applications — candidates apply, employers review and update status
-- User profile endpoint with password update
-- Request validation with Joi
-- Rate limiting: 100 req/15min globally, 10 req/15min on auth endpoints
-- Swagger UI API documentation at `/api-docs`
-- Docker & docker-compose support
-- Integration tests with Jest + Supertest (39 tests)
+Full-stack job board with a React frontend and an Express REST API. Employers post and manage listings; candidates browse, search, and apply. Features JWT auth, role-based access, Redis caching, and an employer admin dashboard.
 
-## Tech Stack
+## Monorepo structure
+
+```
+job-board-api/
+├── src/                  # Express backend
+├── frontend/             # React + Vite frontend
+├── Dockerfile
+├── docker-compose.yml
+└── .github/workflows/    # CI/CD
+```
+
+## Frontend
+
+See [`frontend/README.md`](frontend/README.md) for setup, scripts, and deployment instructions.
+
+## CI/CD
+
+| Workflow | Trigger | What it does |
+|----------|---------|--------------|
+| `.github/workflows/ci.yml` | Push / PR to `main` | Runs backend Jest integration tests (Postgres + Redis) |
+| `.github/workflows/frontend.yml` | Push / PR to `main` touching `frontend/**` | Lint, build, and Vitest component tests |
+
+Production deployments are handled automatically:
+- **Backend** — Render redeploys on push to `main` via the connected GitHub repo
+- **Frontend** — Vercel redeploys on push to `main` (root directory: `frontend`)
+
+---
+
+## Backend
+
+Express 4 REST API with PostgreSQL (Sequelize ORM) and Redis caching.
+
+### Tech stack
 
 | Layer         | Technology                     |
 |---------------|--------------------------------|
@@ -43,7 +65,25 @@ A RESTful API for a job board platform built with Node.js and Express. Supports 
 | Testing       | Jest + Supertest               |
 | Container     | Docker + docker-compose        |
 
-## Project Structure
+### Features
+
+- JWT authentication with access & refresh tokens
+- Role-based access: `employer` and `candidate`
+- Full CRUD for job listings (soft delete via `is_active` flag)
+- Public job browsing — `GET /jobs` and `GET /jobs/:id` require no token
+- Pagination and filtering on job listings (title, company, location, salary range)
+- Redis caching on job listings (60-second TTL, auto-invalidated on write)
+- Role + ownership enforcement (only employers can post, only the owner can edit/delete)
+- Job applications — candidates apply, employers review and update status
+- Employer admin endpoints: stats, job management, application review
+- User profile endpoint with password update
+- Request validation with Joi
+- Rate limiting: 100 req/15min globally, 10 req/15min on auth endpoints
+- Swagger UI API documentation at `/api-docs`
+- Docker & docker-compose support
+- Integration tests with Jest + Supertest (54 tests)
+
+### Project structure
 
 ```
 src/
@@ -52,6 +92,7 @@ src/
 │   ├── redis.js          # ioredis client
 │   └── swagger.js        # Swagger spec
 ├── controllers/
+│   ├── adminController.js        # employer admin stats / jobs / applications
 │   ├── authController.js         # register, login, refresh
 │   ├── applicationController.js  # apply, list, status update, withdraw
 │   ├── jobController.js          # CRUD + pagination + filtering
@@ -70,11 +111,13 @@ src/
 │   └── Job.js
 ├── routes/
 │   ├── index.js
+│   ├── adminRoutes.js
 │   ├── applicationRoutes.js
 │   ├── authRoutes.js
 │   ├── jobRoutes.js
 │   └── userRoutes.js
 ├── tests/
+│   ├── admin.test.js
 │   ├── applications.test.js
 │   ├── auth.test.js
 │   ├── jobs.test.js
@@ -88,7 +131,7 @@ src/
 └── server.js
 ```
 
-## Prerequisites
+### Prerequisites
 
 - Node.js >= 18
 - PostgreSQL >= 14
@@ -96,7 +139,7 @@ src/
 
 Or just Docker — see [Running with Docker](#running-with-docker).
 
-## Environment Variables
+### Environment Variables
 
 Create a `.env` file in the project root:
 
@@ -123,7 +166,7 @@ REDIS_PORT=6379
 
 See `.env.example` for a full template.
 
-## Running Locally
+### Running Locally
 
 ```bash
 # Install dependencies
@@ -138,7 +181,7 @@ npm start
 
 The API will be available at `http://localhost:3000`.
 
-## Running with Docker
+### Running with Docker
 
 ```bash
 docker-compose up --build
@@ -275,8 +318,8 @@ GET /api/v1/jobs?page=1&limit=10&title=developer&company=techco&location=remote&
 | `location` | string | — | Case-insensitive partial match |
 | `salary_min` | integer | — | Jobs where `salary_min >= value` |
 | `salary_max` | integer | — | Jobs where `salary_max <= value` |
-| `sort` | string | `createdAt` | Sort field: `createdAt`, `salary_min`, or `salary_max` (invalid values fall back to `createdAt`) |
-| `order` | string | `desc` | Sort direction: `asc` or `desc` (invalid values fall back to `desc`) |
+| `sort` | string | `createdAt` | Sort field: `createdAt`, `salary_min`, or `salary_max` |
+| `order` | string | `desc` | Sort direction: `asc` or `desc` |
 
 **Response:**
 ```json
@@ -428,7 +471,7 @@ Lists all jobs owned by the employer (including `is_active: false`). Supports `p
 
 #### GET /api/v1/admin/applications
 
-Lists all applications for any of the employer's jobs. Supports `page`, `limit`, and optional `jobId` filter. Each application includes the nested `job` and `candidate` objects (`candidate` exposes only `id` and `email`).
+Lists all applications for any of the employer's jobs. Supports `page`, `limit`, and optional `jobId` filter. Each application includes nested `job` and `candidate` objects (`candidate` exposes only `id` and `email`).
 
 ---
 
@@ -472,7 +515,8 @@ npm test
 | `auth.test.js` | Register, login (success, validation errors, duplicates) |
 | `jobs.test.js` | CRUD, role enforcement, ownership, pagination, filtering, public access |
 | `users.test.js` | Profile retrieval, password update |
-| `applications.test.js` | Apply, duplicate prevention, role checks, list, status update, withdraw, public route regression |
+| `applications.test.js` | Apply, duplicate prevention, role checks, list, status update, withdraw |
+| `admin.test.js` | Stats, admin job list, admin applications, cross-employer isolation |
 
 > The test database is re-created with `{ force: true }` before each suite.
 
@@ -483,4 +527,3 @@ Swagger UI is available at:
 **Local:** `http://localhost:3000/api-docs`
 
 **Production:** https://job-board-api-ghrj.onrender.com/api-docs
-
