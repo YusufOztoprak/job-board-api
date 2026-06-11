@@ -9,10 +9,12 @@
 ## Live demo
 
 | Service | URL |
-|---------|-----|
+|-------|--|
 | Frontend | https://jobhub-frontend-beta.vercel.app |
 | Backend API | https://job-board-api-ghrj.onrender.com |
 | Swagger docs | https://job-board-api-ghrj.onrender.com/api-docs |
+| Video | https://www.youtube.com/watch?v=R81VW-zgX5k |
+
 
 ## About
 
@@ -325,7 +327,7 @@ GET /api/v1/jobs?page=1&limit=10&title=developer&company=techco&location=remote&
 ```json
 {
   "success": true,
-  "data": [ { "id": "uuid", "title": "...", "company": "...", ... } ],
+  "data": [ { "id": "uuid", "title": "...", "company": "..."} ],
   "pagination": {
     "total": 42,
     "page": 1,
