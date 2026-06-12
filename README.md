@@ -13,7 +13,7 @@
 | Frontend | https://jobhub-frontend-beta.vercel.app |
 | Backend API | https://job-board-api-ghrj.onrender.com |
 | Swagger docs | https://job-board-api-ghrj.onrender.com/api-docs |
-| Video | https://www.youtube.com/watch?v=R81VW-zgX5k |
+| Video |https://www.youtube.com/watch?v=MViEzKxPxOQ|
 
 
 ## About
